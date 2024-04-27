@@ -12,4 +12,4 @@ Most of the heavy lifting is being done by [gtfs_kit](https://github.com/mrcagne
 Matplotlib's `FuncAnimation` is then used to animate the vehicles over an array of times
 
 ## Where do I get GTFS data?
-Most transite agencies will make their GTFS data availble for public download, so just try searching for "<city name> GTFS data". As an example, Sound Transit provides GTFS data for most transit agencies in the Seattle area [on their website](https://www.soundtransit.org/help-contacts/business-information/open-transit-data-otd/otd-downloads)
+Most transite agencies will make their GTFS data availble for public download, so just try searching for "<city name> GTFS data". As an example, Sound Transit provides GTFS data for most transit agencies in the Seattle area [on their website](https://www.soundtransit.org/help-contacts/business-information/open-transit-data-otd/otd-downloads).  Place "40_gtfs.zip" in a directory `Seattle/data/` so the script can find it.

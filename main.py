@@ -47,23 +47,27 @@ for route in route_geo_json_array["features"]:
     y_route = []
     x_stop = []
     y_stop = []
+
+    routeProps = route["properties"]
     
     # Identify station coordinates
     if route["geometry"]["type"] == "Point":
-        if route["properties"]["platform_code"] == 2.0: # Remove duplicate stations
-            s_x, s_y = route["geometry"]["coordinates"]
-            projs_x, projs_y = my_map(s_x, s_y)  # Convert lat/lon to map coords
-            x_stop.append(projs_x)
-            y_stop.append(projs_y)
+        station_id = routeProps["parent_station"] or routeProps["stop_code"] or routeProps["stop_id"]
+        if station_id.startswith(("C", "S", "N", "E")) and not station_id.startswith(("SN", "SS")): # Only 1 Line (C/N/S) or 2 Line (E), but not "SS" for Sounder North/South
+            if routeProps["platform_code"] == 2.0: # Remove duplicate stations
+                s_x, s_y = route["geometry"]["coordinates"]
+                projs_x, projs_y = my_map(s_x, s_y)  # Convert lat/lon to map coords
+                x_stop.append(projs_x)
+                y_stop.append(projs_y)
 
     else: # Line coordinates
-        route_short_name = route["properties"]["route_short_name"]
-        if route_short_name in ['S Line','T Line', 'N Line']:
+        route_short_name = routeProps["route_short_name"]
+        if route_short_name in ['S Line', 'T Line', 'N Line']:
             continue
         else:
             route_names.append(route_short_name)
         
-        route_color = route["properties"]["route_color"]
+        route_color = routeProps["route_color"]
         route_points = route["geometry"]["coordinates"]
         route_coords = route_points[0]
 

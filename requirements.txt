@@ -1,0 +1,5 @@
+pandas
+matplotlib
+basemap
+basemap-data-hires
+gtfs_kit
