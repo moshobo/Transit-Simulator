@@ -9,23 +9,25 @@ import gtfs_kit as gk
 DIR = Path('')
 sys.path.append(str(DIR))
 DATA_DIR = DIR/'data/gtfs-data'
-path = DATA_DIR/'example/SoundTransit_042624_40_gtfs.zip' # Example Sound Transit GTFS data
+path = DATA_DIR/'example/SoundTransit_072624_40_gtfs.zip' # Example Sound Transit GTFS data
+# path = DATA_DIR/'example/KCM_050524_GTFS_google_transit.zip' # Example King County Metro GTFS data
 
 feed = gk.read_feed(path, dist_units='mi')
 moving_feed = feed.append_dist_to_stop_times()
 
 # Configurable Paramters
-simulation_date = '2024-04-27'
-simulation_start_time = '11:00:00'
-simulation_end_time = '12:00:00'
+simulation_date = '2024-08-31'
+simulation_start_time = '07:00:00'
+simulation_end_time = '10:00:00'
 plot_title = "Link Light Rail"
 route_ids = ["100479", "2LINE"] # Route IDs to plot
+# route_ids = ["100512", "102548", "102576", "102581", "102615", "102619", "102736"] # KCM Rapid Ride
 
 # Create a Basemap instance with the desired projection
 plt.figure(figsize=(8,8))
 
 # Use resolutions of 'h' or 'f' for greater detail
-my_map = Basemap(llcrnrlon=-122.5, llcrnrlat=47.4, urcrnrlon=-122.1, urcrnrlat=47.75,
+my_map = Basemap(llcrnrlon=-122.6, llcrnrlat=47.4, urcrnrlon=-122.0, urcrnrlat=47.9,
             projection='lcc', resolution='f', lat_0=47.5, lon_0=-122.3)
 
 # Draw geographic features
@@ -43,10 +45,18 @@ for route in route_geo_json_array["features"]:
     y_route = []
     x_stop = []
     y_stop = []
+
+    try:
+        route_color = "#" + str(route["properties"]["route_color"])
+        if route_color == "#None":
+            route_color == "#96182e"
+    except KeyError:
+        route_color = "#96182e"
     
     # Identify station coordinates
     if route["geometry"]["type"] == "Point":
-        if route["properties"]["platform_code"] == 2.0: # Remove duplicate stations
+        station_id = route["properties"]["parent_station"] or route["properties"]["stop_code"] or route["properties"]["stop_id"]
+        if station_id.startswith(("C", "S", "N", "E")) and not station_id.startswith(("SN", "SS")): # Only 1 Line (C/N/S) or 2 Line (E), but not "SS" for Sounder North/South
             s_x, s_y = route["geometry"]["coordinates"]
             projs_x, projs_y = my_map(s_x, s_y)  # Convert lat/lon to map coords
             x_stop.append(projs_x)
@@ -59,9 +69,11 @@ for route in route_geo_json_array["features"]:
         else:
             route_names.append(route["properties"]["route_short_name"])
         
-        route_color = "#" + route["properties"]["route_color"]
         route_points = route["geometry"]["coordinates"]
-        route_coords = route_points[0]
+        if route["geometry"]["type"] == "LineString":
+            route_coords = route_points
+        else:
+            route_coords = route_points[0]
 
         for coord in route_coords:
             projc_x, projc_y = my_map(coord[0], coord[1]) # Convert lat/lon to map coords
@@ -101,6 +113,7 @@ for time in times:
 
 # Plot trip animation
 plt.title(plot_title, fontsize=18, loc='left', color='royalblue', style='italic')
+plt.title('                    created by moshobo', fontsize=10, loc='center', color="k")
 
 animated_plot, = my_map.plot(
     [],
@@ -115,11 +128,12 @@ animated_plot, = my_map.plot(
 def update_data(frame):
     x0, y0 = my_map(x_trip[frame], y_trip[frame])
     animated_plot.set_data(x0, y0)
+    vehicle_count = len(x_trip[frame])
     plt.title(
-        f"{simulation_date} {times[frame]} ",
+        f"{simulation_date} {times[frame]} \n{vehicle_count} active vehicles ",
         loc='right',
         color='dimgray',
-        y=.95
+        y=0.92
     )
 
     return animated_plot
@@ -133,5 +147,5 @@ ani = animation.FuncAnimation(
     repeat_delay=1000
 )
 
-# ani.save(f"lightrail_{simulation_date}.gif") # Save animation as a gif
+ani.save(f"Line1_{simulation_date}.gif") # Save animation as a gif
 plt.show()
