@@ -1,27 +1,109 @@
+import warnings
+# Suppress FutureWarning messages
+warnings.filterwarnings("ignore", "\nPyarrow", DeprecationWarning)
+
+import argparse
 import sys
-from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from mpl_toolkits.basemap import Basemap
+from pathlib import Path
+from datetime import datetime, timedelta
 import gtfs_kit as gk
+
+parser = argparse.ArgumentParser()
+data_group = parser.add_mutually_exclusive_group(required=True)
+data_group.add_argument(
+    "-f",
+    "--file",
+    help="Specify a GTFS feed ZIP file. File should be located in /data/gtfs-data"
+)
+
+data_group.add_argument(
+    "-u",
+    "--url",
+    help="Specify a GTFS feed URL"
+)
+
+parser.add_argument(
+    "-d",
+    "--date",
+    help = "Start date of the simulation in YYYY-MM-DD format."
+)
+
+parser.add_argument(
+    "-s",
+    "--start-time",
+    help = "Start time of the simulation in hh:mm:ss format."
+)
+
+parser.add_argument(
+    "-e",
+    "--end-time",
+    help = "End time of the simulation in hh:mm:ss format."
+)
+
+parser.add_argument(
+    "-r",
+    "--routes",
+    nargs='+',
+    help = "Routes to display in the output GIF file"
+)
+
+parser.add_argument(
+    "-t",
+    "--title",
+    help = "Title to be used for the output GIF file"
+)
 
 DIR = Path('')
 sys.path.append(str(DIR))
 DATA_DIR = DIR/'data/gtfs-data'
-path = DATA_DIR/'example/SoundTransit_072624_40_gtfs.zip' # Example Sound Transit GTFS data
-# path = DATA_DIR/'example/KCM_050524_GTFS_google_transit.zip' # Example King County Metro GTFS data
+
+args = parser.parse_args()
+if args.url:
+    path = args.url
+else:
+    path = DATA_DIR/args.file
+    print(f"Path is a file: {path}")
+
+if args.date:
+    simulation_date = args.date
+else:
+    current_date = datetime.now().date()
+    simulation_date = current_date.strftime("%Y-%m-%d")
+
+if args.start_time:
+    simulation_start_time = args.start_time
+else:
+    current_time = datetime.now().time()
+    simulation_start_time = current_time.strftime("%H:%M:%S")
+
+if args.end_time:
+    simulation_end_time = args.date
+else:
+    start_time_datetime = datetime.strptime(simulation_start_time, "%H:%M:%S")
+    new_time_datetime = start_time_datetime + timedelta(hours=1)
+    simulation_end_time = new_time_datetime.strftime("%H:%M:%S")
 
 feed = gk.read_feed(path, dist_units='mi')
 moving_feed = feed.append_dist_to_stop_times()
+all_routes = [r for r in feed.get_routes()["route_id"]]
 
-# Configurable Paramters
-simulation_date = '2024-08-31'
-simulation_start_time = '07:00:00'
-simulation_end_time = '10:00:00'
-plot_title = "Link Light Rail"
-route_ids = ["100479", "2LINE"] # Route IDs to plot
-# route_ids = ["100512", "102548", "102576", "102581", "102615", "102619", "102736"] # KCM Rapid Ride
+if args.routes:
+    route_ids = args.routes
+    valid_routes = []
+    for route in args.routes:
+        if route in all_routes:
+            valid_routes.append(route)
+    
+    if not valid_routes:
+        raise ValueError(f"No valid routes provided")
+    else:
+        route_ids = valid_routes
+else:
+    route_ids = [all_routes[0]]
 
 # Create a Basemap instance with the desired projection
 plt.figure(figsize=(8,8))
@@ -49,7 +131,7 @@ for route in route_geo_json_array["features"]:
     try:
         route_color = "#" + str(route["properties"]["route_color"])
         if route_color == "#None":
-            route_color == "#96182e"
+            route_color = "#96182e"
     except KeyError:
         route_color = "#96182e"
     
@@ -112,6 +194,11 @@ for time in times:
         y_trip.append(lat_values)
 
 # Plot trip animation
+if args.title:
+    plot_title = args.title
+else:
+    plot_title = "Transit Simulator"
+
 plt.title(plot_title, fontsize=18, loc='left', color='royalblue', style='italic')
 plt.title('                    created by moshobo', fontsize=10, loc='center', color="k")
 
@@ -147,5 +234,6 @@ ani = animation.FuncAnimation(
     repeat_delay=1000
 )
 
-ani.save(f"Line1_{simulation_date}.gif") # Save animation as a gif
+title_routes = '_'.join(route_ids)
+ani.save(f"{title_routes}_{simulation_date}.gif") # Save animation as a gif
 plt.show()

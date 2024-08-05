@@ -1,0 +1,9 @@
+Boston
+MBTA: https://cdn.mbta.com/MBTA_GTFS.zip
+
+New York
+MTA: http://web.mta.info/developers/data/nyct/subway/google_transit.zip
+
+Seattle
+King County Metro: https://www.soundtransit.org/GTFS-KCM/google_transit.zip
+Sound Transit: https://www.soundtransit.org/GTFS-rail/40_gtfs.zip
