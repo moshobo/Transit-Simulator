@@ -1,7 +1,7 @@
 # Transit-Simulator
 Python code for simulating transit lines based on GTFS data
 
-![lightrail_2024-04-27](https://github.com/moshobo/Transit-Simulator/assets/52591849/4c9e79bf-a73a-46db-9883-ecd77703e6da)
+![SNDR_EV_SNDR_TL_100479_2LINE_2024-08-07](https://github.com/user-attachments/assets/e9a8b57f-2f1a-46e3-aa8a-e1ac84f31454)
 
 ## Inspiration
 This project is inspired by @QuadMet on Twitter/X who [created an animation of Portland, OR transit vehicles](https://twitter.com/quadmet/status/1768852830012805455?s=12&t=UdCSxpmnsn74xbyL8_LL1A) based off of GTFS data. They used the ['GTFS Map Generator'](https://gist.github.com/dfsnow/6cef8184ed0dbccadc0cd56a0d22b8be) from Dan Snow (checkout some [simulations](https://sno.ws/writing/2021/03/03/creating-moving-transit-maps-with-r-and-gtfs-feeds/) of their the Chicago L Trains). However, that code was in R, and I don't know R, so I decided to redo it all in Python.
