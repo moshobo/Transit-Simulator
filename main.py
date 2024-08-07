@@ -120,7 +120,7 @@ my_map.drawcoastlines(color='cadetblue')
 # Plot route shapes and stops
 route_geo_json_array = feed.routes_to_geojson(include_stops=True)
 route_names = []
-plotted_stations = []
+all_stops = feed.get_stops() # Get all stops in the GTFS feed.
 
 for route in route_geo_json_array["features"]:
     x_route = []
@@ -128,28 +128,42 @@ for route in route_geo_json_array["features"]:
     x_stop = []
     y_stop = []
 
-    try:
-        route_color = "#" + str(route["properties"]["route_color"])
-        if route_color == "#None":
-            route_color = "#96182e"
-    except KeyError:
-        route_color = "#96182e"
-    
-    # Identify station coordinates
-    if route["geometry"]["type"] == "Point":
-        station_id = route["properties"]["parent_station"] or route["properties"]["stop_code"] or route["properties"]["stop_id"]
-        if station_id.startswith(("C", "S", "N", "E")) and not station_id.startswith(("SN", "SS")): # Only 1 Line (C/N/S) or 2 Line (E), but not "SS" for Sounder North/South
-            s_x, s_y = route["geometry"]["coordinates"]
-            projs_x, projs_y = my_map(s_x, s_y)  # Convert lat/lon to map coords
-            x_stop.append(projs_x)
-            y_stop.append(projs_y)
-
-    else: # Line coordinates
+    if route["geometry"]["type"] in ["LineString", "MultiLineString"]:
         route_id = route["properties"]["route_id"]
         if route_id not in route_ids:
             continue
-        else:
-            route_names.append(route["properties"]["route_short_name"])
+
+        # Update route_color if one is provided by the feed
+        try:
+            route_color = "#" + str(route["properties"]["route_color"])
+            if route_color == "#None":
+                route_color = "#96182e"
+        except KeyError:
+            route_color = "#96182e"
+        
+        # If the stops on the route aren't a parent station (location_type==1), insert parent station and skip the child
+        route_stops = feed.get_stops(route_ids=[route_id]) # Filter to route
+        route_stations = {}
+        for index, stop in route_stops.iterrows():
+            if stop["location_type"] != 1:
+                parent_station_stop_id = stop["parent_station"]
+                if parent_station_stop_id not in route_stations.keys():
+                    parent_lat = float(
+                        all_stops[all_stops["stop_id"] == parent_station_stop_id]["stop_lat"].iloc[0]
+                    )
+                    parent_lon = float(
+                        all_stops[all_stops["stop_id"] == parent_station_stop_id]["stop_lon"].iloc[0]
+                    )
+                    route_stations[parent_station_stop_id] = {"lat": parent_lat, "lon": parent_lon}
+            else:
+                route_stations[stop["stop_id"]] = {'lat': stop["stop_lat"], "lon": stop["stop_lon"]}
+
+        # Convert the coords for the route's stations
+        for station in route_stations: 
+            s_x, s_y = route_stations[station]["lon"], route_stations[station]["lat"]
+            projs_x, projs_y = my_map(s_x, s_y)  # Convert lat/lon to map coords
+            x_stop.append(projs_x)
+            y_stop.append(projs_y)
         
         route_points = route["geometry"]["coordinates"]
         if route["geometry"]["type"] == "LineString":
@@ -157,13 +171,14 @@ for route in route_geo_json_array["features"]:
         else:
             route_coords = route_points[0]
 
+        # Convert the coords for the route's line
         for coord in route_coords:
             projc_x, projc_y = my_map(coord[0], coord[1]) # Convert lat/lon to map coords
             x_route.append(projc_x)
             y_route.append(projc_y)
 
     my_map.plot(x_route, y_route, marker='', color=route_color, linestyle='-', linewidth=2) # Plot route shape
-    my_map.plot(x_stop,y_stop, marker='o', color='white', markeredgecolor='black') # Plot route stops
+    my_map.scatter(x_stop, y_stop, color='white', edgecolor=route_color, zorder=2)
 
 # Get location of trips between specified times
 date_string = ''.join(simulation_date.split('-'))
