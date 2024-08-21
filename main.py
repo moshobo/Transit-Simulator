@@ -48,13 +48,14 @@ parser.add_argument(
     "-r",
     "--routes",
     nargs='+',
-    help = "Routes to display in the output GIF file"
+    help = "Routes to display in the output GIF file. Use 'all' to select every route in the GTFS feed"
 )
 
 parser.add_argument(
     "-t",
     "--title",
-    help = "Title to be used for the output GIF file"
+    nargs='+',
+    help = "Title to be used on the outputted plot"
 )
 
 DIR = Path('')
@@ -66,7 +67,6 @@ if args.url:
     path = args.url
 else:
     path = DATA_DIR/args.file
-    print(f"Path is a file: {path}")
 
 if args.date:
     simulation_date = args.date
@@ -92,43 +92,36 @@ moving_feed = feed.append_dist_to_stop_times()
 all_routes = [r for r in feed.get_routes()["route_id"]]
 
 if args.routes:
-    route_ids = args.routes
-    valid_routes = []
-    for route in args.routes:
-        if route in all_routes:
-            valid_routes.append(route)
-    
-    if not valid_routes:
-        raise ValueError(f"No valid routes provided")
+    if args.routes[0] == "all":
+        route_ids = all_routes
     else:
-        route_ids = valid_routes
+        route_ids = args.routes
+        valid_routes = []
+        for user_route in args.routes:
+            if user_route in all_routes:
+                valid_routes.append(user_route)
+        
+        if not valid_routes:
+            raise ValueError(f"No valid routes provided")
+        else:
+            route_ids = valid_routes
 else:
     route_ids = [all_routes[0]]
 
-# Create a Basemap instance with the desired projection
-plt.figure(figsize=(8,8))
-
-# Use resolutions of 'h' or 'f' for greater detail
-my_map = Basemap(llcrnrlon=-122.6, llcrnrlat=47.4, urcrnrlon=-122.0, urcrnrlat=47.9,
-            projection='lcc', resolution='f', lat_0=47.5, lon_0=-122.3)
-
-# Draw geographic features
-my_map.drawmapboundary(fill_color='lightcyan')
-my_map.fillcontinents(lake_color='lightcyan')
-my_map.drawcoastlines(color='cadetblue')
-
 # Plot route shapes and stops
 route_geo_json_array = feed.routes_to_geojson(include_stops=True)
-route_names = []
+route_names = [] # Currently unused
 all_stops = feed.get_stops() # Get all stops in the GTFS feed.
 
-for route in route_geo_json_array["features"]:
-    x_route = []
-    y_route = []
-    x_stop = []
-    y_stop = []
+llcrnrlon_0 = 0.0
+llcrnrlat_0 = 0.0
+urcrnrlon_0 = 0.0
+urcrnrlat_0 = 0.0
+routes = {}
 
-    if route["geometry"]["type"] in ["LineString", "MultiLineString"]:
+# Export route and its accompanying stations in lon/lat format
+for route in route_geo_json_array["features"]: 
+    if route["geometry"]["type"] in ["LineString", "MultiLineString"]: # TODO: Could this if statement be removed by doing more filtering in the For loop?
         route_id = route["properties"]["route_id"]
         if route_id not in route_ids:
             continue
@@ -137,15 +130,17 @@ for route in route_geo_json_array["features"]:
         try:
             route_color = "#" + str(route["properties"]["route_color"])
             if route_color == "#None":
-                route_color = "#96182e"
+                route_color = "#FFFFFF"
         except KeyError:
-            route_color = "#96182e"
+            route_color = "#FFFFFF"
         
         # If the stops on the route aren't a parent station (location_type==1), insert parent station and skip the child
-        route_stops = feed.get_stops(route_ids=[route_id]) # Filter to route
+        route_stops = feed.get_stops(route_ids=[route_id])
         route_stations = {}
         for index, stop in route_stops.iterrows():
-            if stop["location_type"] != 1:
+            if stop["location_type"] == 1 or pd.isna(stop["location_type"]): # location_type == 1 is a parent station
+                route_stations[stop["stop_id"]] = {'lat': stop["stop_lat"], "lon": stop["stop_lon"]}
+            elif stop["location_type"] != 1:
                 parent_station_stop_id = stop["parent_station"]
                 if parent_station_stop_id not in route_stations.keys():
                     parent_lat = float(
@@ -154,39 +149,101 @@ for route in route_geo_json_array["features"]:
                     parent_lon = float(
                         all_stops[all_stops["stop_id"] == parent_station_stop_id]["stop_lon"].iloc[0]
                     )
-                    route_stations[parent_station_stop_id] = {"lat": parent_lat, "lon": parent_lon}
+                    route_stations[parent_station_stop_id] = {"lat": parent_lat, "lon": parent_lon}       
             else:
-                route_stations[stop["stop_id"]] = {'lat': stop["stop_lat"], "lon": stop["stop_lon"]}
-
-        # Convert the coords for the route's stations
-        for station in route_stations: 
-            s_x, s_y = route_stations[station]["lon"], route_stations[station]["lat"]
-            projs_x, projs_y = my_map(s_x, s_y)  # Convert lat/lon to map coords
-            x_stop.append(projs_x)
-            y_stop.append(projs_y)
-        
+                raise TypeError(f"Invalid location_type of {stop['location_type']}")
+                
         route_points = route["geometry"]["coordinates"]
         if route["geometry"]["type"] == "LineString":
             route_coords = route_points
         else:
-            route_coords = route_points[0]
+            route_coords = route_points[-1] # TODO: Account for the fact that MultiLineString will have multiple parts, which all need to be plotted individually
 
-        # Convert the coords for the route's line
-        for coord in route_coords:
-            projc_x, projc_y = my_map(coord[0], coord[1]) # Convert lat/lon to map coords
-            x_route.append(projc_x)
-            y_route.append(projc_y)
+        route_station_lon_array = [route_stations[station]["lon"] for station in route_stations.keys()]
+        route_station_lat_array = [route_stations[station]["lat"] for station in route_stations.keys()]
 
-    my_map.plot(x_route, y_route, marker='', color=route_color, linestyle='-', linewidth=2) # Plot route shape
-    my_map.scatter(x_stop, y_stop, color='white', edgecolor=route_color, zorder=2)
+        # Find the upper and lower bounds of the filtered stations
+        # TODO: Simplify if/else statements
+        if urcrnrlon_0 == 0.0:
+            urcrnrlon_0 = max(route_station_lon_array)
+        else:
+            if max(route_station_lon_array) > urcrnrlon_0:
+                urcrnrlon_0 = max(route_station_lon_array)
+
+        if llcrnrlon_0 == 0.0:
+            llcrnrlon_0 = min(route_station_lon_array)
+        else:
+            if min(route_station_lon_array) < llcrnrlon_0:
+                llcrnrlon_0 = min(route_station_lon_array)
+
+        if urcrnrlat_0 == 0.0:
+            urcrnrlat_0 = max(route_station_lat_array)
+        else:
+            if max(route_station_lat_array) > urcrnrlat_0:
+                urcrnrlat_0 = max(route_station_lat_array)
+
+        if llcrnrlat_0 == 0.0:
+            llcrnrlat_0 = min(route_station_lat_array)
+        else:
+            if min(route_station_lat_array) < llcrnrlat_0:
+                llcrnrlat_0 = min(route_station_lat_array)
+
+        routes[route_id] = {"route_color": route_color, "route_coords": route_coords, "route_stations": route_stations}
+
+# TODO: Make the zoom factor dynamic for the lat / lon so that its something like 10% more than the max-min
+zoom_factor = 0.02 # Add padding around station coordinates 
+plt.figure(figsize=(8,8))
+transit_map = Basemap(
+    llcrnrlon=llcrnrlon_0-(zoom_factor),
+    llcrnrlat=llcrnrlat_0-(zoom_factor),
+    urcrnrlon=urcrnrlon_0+(zoom_factor),
+    urcrnrlat=urcrnrlat_0+(zoom_factor),
+    projection='lcc',
+    resolution='f',
+    lat_0=urcrnrlat_0 - (urcrnrlat_0 - llcrnrlat_0),
+    lon_0=urcrnrlon_0 - (urcrnrlon_0 - llcrnrlon_0)
+)
+
+# Draw geographic features
+transit_map.drawmapboundary(fill_color='lightcyan')
+transit_map.fillcontinents(lake_color='lightcyan')
+transit_map.drawcoastlines(color='cadetblue')
+
+# Plot routes and their stops on map
+for route in routes:
+
+    route_color = routes[route]["route_color"]
+    route_coords = routes[route]["route_coords"]
+    route_stations = routes[route]["route_stations"]
+
+    x_route_proj = []
+    y_route_proj = []
+    x_stop_proj = []
+    y_stop_proj = []
+
+    # Convert the x/y for the route's stations to map coord system
+    for station in route_stations: 
+        s_x, s_y = route_stations[station]["lon"], route_stations[station]["lat"]
+        projs_x, projs_y = transit_map(s_x, s_y)
+        x_stop_proj.append(projs_x)
+        y_stop_proj.append(projs_y)
+    
+    # Convert the x/y for the route's line to map coord system
+    for coord in route_coords:
+        projc_x, projc_y = transit_map(coord[0], coord[1])
+        x_route_proj.append(projc_x)
+        y_route_proj.append(projc_y)
+
+    transit_map.plot(x_route_proj, y_route_proj, marker='', color=route_color, linestyle='-', linewidth=2)
+    transit_map.scatter(x_stop_proj, y_stop_proj, color='white', edgecolor=route_color, zorder=2)
 
 # Get location of trips between specified times
 date_string = ''.join(simulation_date.split('-'))
-start_time = simulation_date + ' ' + simulation_start_time
-end_time = simulation_date + ' ' + simulation_end_time
-
-rng = pd.date_range(start=start_time, end=end_time, freq='30s')
+start_datetime = simulation_date + ' ' + simulation_start_time
+end_datetime = simulation_date + ' ' + simulation_end_time
+rng = pd.date_range(start=start_datetime, end=end_datetime, freq='30s')
 times = [t.strftime('%H:%M:%S') for t in rng]
+
 loc = moving_feed.locate_trips(date_string, times)
 filtered_route_loc = loc[loc['route_id'].isin(route_ids)].sort_values('time', ascending=True).copy()
 
@@ -207,17 +264,20 @@ for time in times:
 
         x_trip.append(lon_values)
         y_trip.append(lat_values)
+    else:
+        # TODO: Insert a placeholder value if there is no trip info for that time
+        continue
 
-# Plot trip animation
 if args.title:
-    plot_title = args.title
+    plot_title = ' '.join(args.title)
 else:
     plot_title = "Transit Simulator"
 
 plt.title(plot_title, fontsize=18, loc='left', color='royalblue', style='italic')
 plt.title('                    created by moshobo', fontsize=10, loc='center', color="k")
 
-animated_plot, = my_map.plot(
+# Plot trip animation
+animated_plot, = transit_map.plot(
     [],
     [],
     latlon=True,
@@ -228,7 +288,7 @@ animated_plot, = my_map.plot(
 )
 
 def update_data(frame):
-    x0, y0 = my_map(x_trip[frame], y_trip[frame])
+    x0, y0 = transit_map(x_trip[frame], y_trip[frame])
     animated_plot.set_data(x0, y0)
     vehicle_count = len(x_trip[frame])
     plt.title(
@@ -250,5 +310,5 @@ ani = animation.FuncAnimation(
 )
 
 title_routes = '_'.join(route_ids)
-ani.save(f"{title_routes}_{simulation_date}.gif") # Save animation as a gif
+ani.save(f"output/{title_routes}_{simulation_date}.gif") # Save animation as a gif
 plt.show()

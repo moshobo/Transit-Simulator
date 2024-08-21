@@ -1,6 +1,9 @@
 Boston
 MBTA: https://cdn.mbta.com/MBTA_GTFS.zip
 
+Los Angeles
+LA Metro Rail: https://gitlab.com/LACMTA/gtfs_rail/raw/master/gtfs_rail.zip
+
 New York
 MTA: http://web.mta.info/developers/data/nyct/subway/google_transit.zip
 
