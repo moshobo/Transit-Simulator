@@ -155,9 +155,9 @@ for route in route_geo_json_array["features"]:
                 
         route_points = route["geometry"]["coordinates"]
         if route["geometry"]["type"] == "LineString":
-            route_coords = route_points
+            route_coords = [route_points]
         else:
-            route_coords = route_points[-1] # TODO: Account for the fact that MultiLineString will have multiple parts, which all need to be plotted individually
+            route_coords = route_points
 
         route_station_lon_array = [route_stations[station]["lon"] for station in route_stations.keys()]
         route_station_lat_array = [route_stations[station]["lat"] for station in route_stations.keys()]
@@ -229,12 +229,16 @@ for route in routes:
         y_stop_proj.append(projs_y)
     
     # Convert the x/y for the route's line to map coord system
-    for coord in route_coords:
-        projc_x, projc_y = transit_map(coord[0], coord[1])
-        x_route_proj.append(projc_x)
-        y_route_proj.append(projc_y)
-
-    transit_map.plot(x_route_proj, y_route_proj, marker='', color=route_color, linestyle='-', linewidth=2)
+    for route in route_coords:
+        x_route_proj = []
+        y_route_proj = []
+        for coord in route:
+            projc_x, projc_y = transit_map(coord[0], coord[1])
+            x_route_proj.append(projc_x)
+            y_route_proj.append(projc_y)
+        
+        transit_map.plot(x_route_proj, y_route_proj, marker='', color=route_color, linestyle='-', linewidth=2)
+    
     transit_map.scatter(x_stop_proj, y_stop_proj, color='white', edgecolor=route_color, zorder=2)
 
 # Get location of trips between specified times
