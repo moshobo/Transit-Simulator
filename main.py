@@ -205,9 +205,7 @@ transit_map = Basemap(
 )
 
 # Draw geographic features
-transit_map.drawmapboundary(fill_color='lightcyan')
-transit_map.fillcontinents(lake_color='lightcyan')
-transit_map.drawcoastlines(color='cadetblue')
+transit_map.fillcontinents(lake_color='white', color=(.9, .9, .9))
 
 # Plot routes and their stops on map
 for route in routes:
