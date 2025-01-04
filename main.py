@@ -81,7 +81,7 @@ else:
     simulation_start_time = current_time.strftime("%H:%M:%S")
 
 if args.end_time:
-    simulation_end_time = args.date
+    simulation_end_time = args.end_time
 else:
     start_time_datetime = datetime.strptime(simulation_start_time, "%H:%M:%S")
     new_time_datetime = start_time_datetime + timedelta(hours=1)
