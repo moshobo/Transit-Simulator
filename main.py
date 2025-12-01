@@ -58,6 +58,11 @@ parser.add_argument(
     help = "Title to be used on the outputted plot"
 )
 
+parser.add_argument(
+    "--station-labels",
+    action="store_true",
+)
+
 DIR = Path('')
 sys.path.append(str(DIR))
 DATA_DIR = DIR/'data/gtfs-data'
@@ -139,7 +144,7 @@ for route in route_geo_json_array["features"]:
         route_stations = {}
         for index, stop in route_stops.iterrows():
             if stop["location_type"] == 1 or pd.isna(stop["location_type"]): # location_type == 1 is a parent station
-                route_stations[stop["stop_id"]] = {'lat': stop["stop_lat"], "lon": stop["stop_lon"]}
+                route_stations[stop["stop_id"]] = {'lat': stop["stop_lat"], "lon": stop["stop_lon"], 'name': stop["stop_name"]}
             elif stop["location_type"] != 1:
                 parent_station_stop_id = stop["parent_station"]
                 if parent_station_stop_id not in route_stations.keys():
@@ -149,7 +154,7 @@ for route in route_geo_json_array["features"]:
                     parent_lon = float(
                         all_stops[all_stops["stop_id"] == parent_station_stop_id]["stop_lon"].iloc[0]
                     )
-                    route_stations[parent_station_stop_id] = {"lat": parent_lat, "lon": parent_lon}       
+                    route_stations[parent_station_stop_id] = {"lat": parent_lat, "lon": parent_lon, 'name': stop["stop_name"]}       
             else:
                 raise TypeError(f"Invalid location_type of {stop['location_type']}")
                 
@@ -218,6 +223,7 @@ for route in routes:
     y_route_proj = []
     x_stop_proj = []
     y_stop_proj = []
+    route_station_names = []
 
     # Convert the x/y for the route's stations to map coord system
     for station in route_stations: 
@@ -225,6 +231,7 @@ for route in routes:
         projs_x, projs_y = transit_map(s_x, s_y)
         x_stop_proj.append(projs_x)
         y_stop_proj.append(projs_y)
+        route_station_names.append(route_stations[station]['name'])
     
     # Convert the x/y for the route's line to map coord system
     for route in route_coords:
@@ -238,6 +245,17 @@ for route in routes:
         transit_map.plot(x_route_proj, y_route_proj, marker='', color=route_color, linestyle='-', linewidth=2)
     
     transit_map.scatter(x_stop_proj, y_stop_proj, color='white', edgecolor=route_color, zorder=2)
+
+    # Add station labels
+    if args.station_labels:
+        for x_stop_proj, y_stop_proj, name in zip(x_stop_proj, y_stop_proj, route_station_names):
+            plt.annotate(
+                name,
+                (x_stop_proj, y_stop_proj),
+                xytext=(5, 3),
+                textcoords='offset points',
+                fontsize=7
+            )
 
 # Get location of trips between specified times
 date_string = ''.join(simulation_date.split('-'))

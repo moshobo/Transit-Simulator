@@ -16,13 +16,14 @@ Here is an example of how to generate a transit simulation for Sound Transit's 1
 ## Command Line Arguments
 The following flags can be passed when using the command line:
 
-`--file` - Specify a GTFS ZIP file to use. File should be in the `/data/gtfs-data` folder<br />
-`--url` - Specify a URL to get a GTFS ZIP file.<br />
-`--date` - Specify the start date of the simulation in YYYY-MM-DD format.<br />
-`--start-time` - Specify the start time of the simulation in hh:mm:ss format. The timezone used is that of the transit agency specified in the GTFS feed.<br />
-`--end-time` - Specify the end time of the simulation in hh:mm:ss format. The timezone used is that of the transit agency specified in the GTFS feed.<br />
-`--routes` - Declare which Route IDs should be displayed in the simulation.<br />
-`--title` - The name to be used on the output GIF file.
+`-f`, `--file` - Specify a GTFS ZIP file to use. File should be in the `/data/gtfs-data` folder<br />
+`-u`, `--url` - Specify a URL to get a GTFS ZIP file.<br />
+`-d`, `--date` - Specify the start date of the simulation in YYYY-MM-DD format.<br />
+`-s`, `--start-time` - Specify the start time of the simulation in hh:mm:ss format. The timezone used is that of the transit agency specified in the GTFS feed.<br />
+`-e`, `--end-time` - Specify the end time of the simulation in hh:mm:ss format. The timezone used is that of the transit agency specified in the GTFS feed.<br />
+`-r`, `--routes` - Declare which Route IDs should be displayed in the simulation.<br />
+`t`, `--title` - The name to be used on the output GIF file.
+`--station-labels` - When specificed, shows station labels for all stations.
 
 # Examples
 
