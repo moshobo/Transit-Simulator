@@ -4,9 +4,18 @@ MBTA: https://cdn.mbta.com/MBTA_GTFS.zip
 Los Angeles
 LA Metro Rail: https://gitlab.com/LACMTA/gtfs_rail/raw/master/gtfs_rail.zip
 
+Miami
+http://www.miamidade.gov/transit/googletransit/current/google_transit.zip
+
 New York
 MTA: http://web.mta.info/developers/data/nyct/subway/google_transit.zip
+
+Philadelphia
+SEPTA: https://www3.septa.org/developer/gtfs_public.zip
 
 Seattle
 King County Metro: https://www.soundtransit.org/GTFS-KCM/google_transit.zip
 Sound Transit: https://www.soundtransit.org/GTFS-rail/40_gtfs.zip
+
+Rome, Italy
+https://romamobilita.it/sites/default/files/rome_static_gtfs.zip
