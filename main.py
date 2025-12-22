@@ -95,7 +95,7 @@ parser.add_argument(
 
 parser.add_argument(
     "--station-labels",
-    action="store_true",
+    nargs='*',
     help = "Display station names as labels on the plot."
 )
 
@@ -266,6 +266,8 @@ transit_map = Basemap(
 transit_map.fillcontinents(lake_color='white', color=(.9, .9, .9))
 
 # Plot routes and their stops on map
+target_station_names = args.station_labels if args.station_labels else []
+
 for route in routes:
 
     route_color = routes[route]["route_color"]
@@ -300,7 +302,18 @@ for route in routes:
     transit_map.scatter(x_stop_proj, y_stop_proj, color='white', edgecolor=route_color, zorder=2)
 
     # Add station labels
-    if args.station_labels:
+    if len(target_station_names) > 0:
+        for x_stop_proj, y_stop_proj, name in zip(x_stop_proj, y_stop_proj, route_station_names):
+            if name in target_station_names:
+                plt.annotate(
+                    name,
+                    (x_stop_proj, y_stop_proj),
+                    xytext=(5, 3),
+                    textcoords='offset points',
+                    fontsize=7
+                )
+    elif args.station_labels is not None:
+        print("No station labels specified.")
         for x_stop_proj, y_stop_proj, name in zip(x_stop_proj, y_stop_proj, route_station_names):
             plt.annotate(
                 name,
