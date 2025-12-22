@@ -143,9 +143,13 @@ for route in route_geo_json_array["features"]:
         route_stops = feed.get_stops(route_ids=[route_id])
         route_stations = {}
         for index, stop in route_stops.iterrows():
-            if stop["location_type"] == 1 or pd.isna(stop["location_type"]): # location_type == 1 is a parent station
-                route_stations[stop["stop_id"]] = {'lat': stop["stop_lat"], "lon": stop["stop_lon"], 'name': stop["stop_name"]}
-            elif stop["location_type"] != 1:
+            if stop["location_type"] == 1: # location_type == 1 is a parent station
+                route_stations[stop["stop_id"]] = {
+                    'lat': stop["stop_lat"],
+                    "lon": stop["stop_lon"],
+                    "name": stop["stop_name"]
+                }
+            elif stop["location_type"] != 1 or pd.isna(stop["location_type"]):              
                 parent_station_stop_id = stop["parent_station"]
                 if parent_station_stop_id not in route_stations.keys():
                     parent_lat = float(
@@ -154,10 +158,14 @@ for route in route_geo_json_array["features"]:
                     parent_lon = float(
                         all_stops[all_stops["stop_id"] == parent_station_stop_id]["stop_lon"].iloc[0]
                     )
-                    route_stations[parent_station_stop_id] = {"lat": parent_lat, "lon": parent_lon, 'name': stop["stop_name"]}       
+                    route_stations[parent_station_stop_id] = {
+                        "lat": parent_lat,
+                        "lon": parent_lon,
+                        "name": stop["stop_name"]
+                    }       
             else:
                 raise TypeError(f"Invalid location_type of {stop['location_type']}")
-                
+
         route_points = route["geometry"]["coordinates"]
         if route["geometry"]["type"] == "LineString":
             route_coords = [route_points]
