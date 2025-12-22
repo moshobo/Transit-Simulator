@@ -11,7 +11,11 @@ This project is inspired by @QuadMet on Twitter/X who [created an animation of P
 ## Example Usage
 Here is an example of how to generate a transit simulation for Sound Transit's 1 Line at 8am on Dec 25, 2024.
 
-`python3 main.py -u https://www.soundtransit.org/GTFS-rail/40_gtfs.zip -d 2024-12-25 -s 08:00:00 -r 100479 2LINE -t Foobar`
+`python3 main.py -u https://www.soundtransit.org/GTFS-rail/40_gtfs.zip -d 2024-12-25 -s 08:00:00 -r 100479 2LINE -t SimulationFromURL`
+
+Here is an example of how to generate a transit simulation using the example file located in `/data/gtfs-data/example/SoundTransit_042624_40_gtfs.zip`, originally from Sound Transit
+
+`python3 main.py -f example/SoundTransit_071224_40_gtfs.zip -d 2024-07-25 -s 08:00:00 -r 100479 -t SimulationFromLocalFile`
 
 ## Command Line Arguments
 The following flags can be passed when using the command line:
@@ -34,10 +38,25 @@ The following flags can be passed when using the command line:
 `python3 main.py -u https://gitlab.com/LACMTA/gtfs_rail/raw/master/gtfs_rail.zip -d 2024-12-25 -s 08:00:00 -r 807 803 801 -t LA Metro`
 ![807_803_801_2024-12-25](https://github.com/user-attachments/assets/f4bc3f24-7256-40ba-b385-4f74ccaab53b)
 
+## F Train - New York, NY
+Uses some not-yet-committed code to only display select station names.
+
+`python3 main.py -f example/MTA_gtfs_subway_12222025.zip -d 2025-12-22 -s 09:00:00 -e 09:30:00 -r F -t F Train --station-labels`
+![F_2025-12-22](https://github.com/user-attachments/assets/bcca709a-1cd0-49b5-ad64-1928ae1ff1e6)
+
+
+## Sounder - Greater Seattle Area, Washington
+Example of a simulation that uses the `--station-label` flag to display station names.
+
+`python3 main.py -u https://www.soundtransit.org/GTFS-rail/40_gtfs.zip  -d 2025-12-22 -s 06:00:00 -e 10:30:00 -r SNDR_EV SNDR_TL -t Sounder North --station-labels`
+![SNDR_EV_SNDR_TL_2025-12-22](https://github.com/user-attachments/assets/8f9dd37d-65c6-42f2-9f59-3edca0816b2b)
+
+
+
 # FAQs
 
 ## How does it work?
-Most of the heavy lifting is being done by [gtfs_kit](https://github.com/mrcagney/gtfs_kit), which take in GTFS feed data and allows you to query it in a number of ways. The most important part of this is `feed.locate_trips()`, which is able to figure out where transit vehicles are at a given point in time.
+Most of the heavy lifting is being done by [gtfs_kit](https://github.com/araichev/gtfs_kit), which take in GTFS feed data and allows you to query it in a number of ways. The most important part of this is `feed.locate_trips()`, which is able to figure out where transit vehicles are at a given point in time.
 
 Matplotlib's `FuncAnimation` is then used to animate the vehicles over an array of times
 
