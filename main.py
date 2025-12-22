@@ -12,6 +12,31 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import gtfs_kit as gk
 
+def update_data(frame):
+    """Update animated plot for each frame"""
+    
+    x0, y0 = transit_map(x_trip[frame], y_trip[frame])
+    animated_plot.set_data(x0, y0)
+    vehicle_count = len(x_trip[frame])
+    plt.title(
+        f"{simulation_date} {times[frame]} \n{vehicle_count} active vehicles ",
+        loc='right',
+        color='dimgray',
+        y=0.92
+    )
+
+    return animated_plot
+
+def validate_args_to_feed(feed, simulation_date):
+    """Validate command line arguments are valid for the feed"""
+    
+    # Validate feed contains calendar for target simulation date
+    target_date = simulation_date.replace("-","")
+    feed_dates = feed.get_dates()
+
+    if target_date not in feed_dates:
+        raise ValueError(f"Simulation date {target_date} not found in feed dates. Valid dates from {feed_dates[0]} to {feed_dates[-1]}")
+
 parser = argparse.ArgumentParser()
 data_group = parser.add_mutually_exclusive_group(required=True)
 data_group.add_argument(
@@ -93,6 +118,7 @@ else:
     simulation_end_time = new_time_datetime.strftime("%H:%M:%S")
 
 feed = gk.read_feed(path, dist_units='mi')
+validate_args_to_feed(feed, simulation_date)
 moving_feed = feed.append_dist_to_stop_times()
 all_routes = [r for r in feed.get_routes()["route_id"]]
 
@@ -116,7 +142,7 @@ else:
 # Plot route shapes and stops
 route_geo_json_array = feed.routes_to_geojson(include_stops=True)
 route_names = [] # Currently unused
-all_stops = feed.get_stops() # Get all stops in the GTFS feed.
+all_stops = feed.get_stops()
 
 llcrnrlon_0 = 0.0
 llcrnrlat_0 = 0.0
@@ -149,7 +175,7 @@ for route in route_geo_json_array["features"]:
                     "lon": stop["stop_lon"],
                     "name": stop["stop_name"]
                 }
-            elif stop["location_type"] != 1 or pd.isna(stop["location_type"]):              
+            elif stop["location_type"] != 1 or pd.isna(stop["location_type"]): # Child station or no parent              
                 parent_station_stop_id = stop["parent_station"]
                 if parent_station_stop_id not in route_stations.keys():
                     parent_lat = float(
@@ -277,7 +303,7 @@ filtered_route_loc = loc[loc['route_id'].isin(route_ids)].sort_values('time', as
 
 # Check that there will be route information to animate
 if len(filtered_route_loc) == 0:
-    raise Exception("No frames to animate. Length of target_route is zero.")
+    raise Exception("No frames to animate. Length of filtered_route_loc is zero.")
 
 x_trip = []
 y_trip = []
@@ -314,19 +340,6 @@ animated_plot, = transit_map.plot(
     linestyle='None',
     zorder=8
 )
-
-def update_data(frame):
-    x0, y0 = transit_map(x_trip[frame], y_trip[frame])
-    animated_plot.set_data(x0, y0)
-    vehicle_count = len(x_trip[frame])
-    plt.title(
-        f"{simulation_date} {times[frame]} \n{vehicle_count} active vehicles ",
-        loc='right',
-        color='dimgray',
-        y=0.92
-    )
-
-    return animated_plot
 
 ani = animation.FuncAnimation(
     fig=plt.gcf(),
