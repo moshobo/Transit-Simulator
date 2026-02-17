@@ -165,32 +165,40 @@ for route in route_geo_json_array["features"]:
         except KeyError:
             route_color = "#FFFFFF"
         
-        # If the stops on the route aren't a parent station (location_type==1), insert parent station and skip the child
+        # Attempt to use stations (location_type == 1) where possible to simplify visuals
         route_stops = feed.get_stops(route_ids=[route_id])
         route_stations = {}
         for index, stop in route_stops.iterrows():
-            if stop["location_type"] == 1: # location_type == 1 is a parent station
+            if stop["location_type"] == 1: # Station
                 route_stations[stop["stop_id"]] = {
                     'lat': stop["stop_lat"],
                     "lon": stop["stop_lon"],
                     "name": stop["stop_name"]
                 }
-            elif stop["location_type"] != 1 or pd.isna(stop["location_type"]): # Child station or no parent              
+            elif stop["location_type"] == 0 or pd.isna(stop["location_type"]): # Stop or platform   
                 parent_station_stop_id = stop["parent_station"]
-                if parent_station_stop_id not in route_stations.keys():
-                    parent_lat = float(
-                        all_stops[all_stops["stop_id"] == parent_station_stop_id]["stop_lat"].iloc[0]
-                    )
-                    parent_lon = float(
-                        all_stops[all_stops["stop_id"] == parent_station_stop_id]["stop_lon"].iloc[0]
-                    )
-                    route_stations[parent_station_stop_id] = {
-                        "lat": parent_lat,
-                        "lon": parent_lon,
+                if pd.isna(parent_station_stop_id):
+                    route_stations[stop["stop_id"]] = {
+                        'lat': stop["stop_lat"],
+                        "lon": stop["stop_lon"],
                         "name": stop["stop_name"]
-                    }       
+                    }
+                # Use the station since it is available
+                else:
+                    if parent_station_stop_id not in route_stations.keys():
+                        parent_lat = float(
+                            all_stops[all_stops["stop_id"] == parent_station_stop_id]["stop_lat"].iloc[0]
+                        )
+                        parent_lon = float(
+                            all_stops[all_stops["stop_id"] == parent_station_stop_id]["stop_lon"].iloc[0]
+                        )
+                        route_stations[parent_station_stop_id] = {
+                            "lat": parent_lat,
+                            "lon": parent_lon,
+                            "name": stop["stop_name"]
+                        }
             else:
-                raise TypeError(f"Invalid location_type of {stop['location_type']}")
+                raise TypeError(f"Unsupported location_type of {stop['location_type']}")
 
         route_points = route["geometry"]["coordinates"]
         if route["geometry"]["type"] == "LineString":
