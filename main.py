@@ -15,17 +15,27 @@ import gtfs_kit as gk
 def update_data(frame):
     """Update animated plot for each frame"""
     
-    x0, y0 = transit_map(x_trip[frame], y_trip[frame])
-    animated_plot.set_data(x0, y0)
-    vehicle_count = len(x_trip[frame])
+    frame_data = trip_positions[frame]
+
+    total_vehicles = 0
+
+    for route_id, plot in animated_plots.items():
+        if route_id in frame_data:
+            lons, lats = frame_data[route_id]
+            x, y = transit_map(lons, lats)
+            plot.set_data(x, y)
+            total_vehicles += len(lons)
+        else:
+            plot.set_data([], [])
+
     plt.title(
-        f"{simulation_date} {times[frame]} \n{vehicle_count} active vehicles ",
+        f"{simulation_date} {times[frame]}\n{total_vehicles} active vehicles",
         loc='right',
         color='dimgray',
         y=0.92
     )
 
-    return animated_plot
+    return list(animated_plots.values())
 
 def validate_args_to_feed(feed, simulation_date):
     """Validate command line arguments are valid for the feed"""
@@ -42,13 +52,13 @@ data_group = parser.add_mutually_exclusive_group(required=True)
 data_group.add_argument(
     "-f",
     "--file",
-    help="Specify a GTFS feed ZIP file. File should be located in /data/gtfs-data"
+    help="Specify a GTFS feed ZIP file. File should be located in /data/gtfs-data."
 )
 
 data_group.add_argument(
     "-u",
     "--url",
-    help="Specify a GTFS feed URL"
+    help="Specify a GTFS feed URL."
 )
 
 parser.add_argument(
@@ -73,19 +83,20 @@ parser.add_argument(
     "-r",
     "--routes",
     nargs='+',
-    help = "Routes to display in the output GIF file. Use 'all' to select every route in the GTFS feed"
+    help = "Routes to display in the output GIF file. Use 'all' to select every route in the GTFS feed."
 )
 
 parser.add_argument(
     "-t",
     "--title",
     nargs='+',
-    help = "Title to be used on the outputted plot"
+    help = "Title to be used on the outputted plot."
 )
 
 parser.add_argument(
     "--station-labels",
     action="store_true",
+    help = "Display station names as labels on the plot."
 )
 
 DIR = Path('')
@@ -313,19 +324,21 @@ filtered_route_loc = loc[loc['route_id'].isin(route_ids)].sort_values('time', as
 if len(filtered_route_loc) == 0:
     raise Exception("No frames to animate. Length of filtered_route_loc is zero.")
 
-x_trip = []
-y_trip = []
+trip_positions = [] # list of dicts: {route_id: (lons, lats)}
 
 # Get coordinates for trips within the simulation time range
 for time in times:
     matching_rows = filtered_route_loc[filtered_route_loc['time'] == time]
     
     if not matching_rows.empty:
-        lon_values = matching_rows['lon'].tolist()
-        lat_values = matching_rows['lat'].tolist()
+        frame_data = {}
+        for route_id, group in matching_rows.groupby("route_id"):
+            frame_data[route_id] = (
+                group["lon"].tolist(),
+                group["lat"].tolist()
+            )
 
-        x_trip.append(lon_values)
-        y_trip.append(lat_values)
+        trip_positions.append(frame_data)
     else:
         # TODO: Insert a placeholder value if there is no trip info for that time
         continue
@@ -338,21 +351,30 @@ else:
 plt.title(plot_title, fontsize=18, loc='left', color='royalblue', style='italic')
 plt.title('                    created by moshobo', fontsize=10, loc='center', color="k")
 
-# Plot trip animation
-animated_plot, = transit_map.plot(
-    [],
-    [],
-    latlon=True,
-    color='k',
-    marker='s',
-    linestyle='None',
-    zorder=8
-)
+# TODO: Keep this near where GTFS is loaded.
+route_colors = {
+    route.route_id: f"#{route.route_color}"
+    for route in feed.routes.itertuples()
+}
+
+animated_plots = {}
+
+for route_id in route_ids:
+    animated_plots[route_id], = transit_map.plot(
+        [],
+        [],
+        latlon=True,
+        marker='s',
+        linestyle='None',
+        color=routes[route_id]["route_color"],
+        zorder=8,
+        label=route_id
+    )
 
 ani = animation.FuncAnimation(
     fig=plt.gcf(),
     func=update_data,
-    frames=len(x_trip),
+    frames=len(trip_positions),
     interval=100,
     repeat=True,
     repeat_delay=1000
