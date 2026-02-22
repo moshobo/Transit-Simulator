@@ -3,6 +3,7 @@ import warnings
 warnings.filterwarnings("ignore", "\nPyarrow", DeprecationWarning)
 
 import argparse
+import logging
 import sys
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -99,15 +100,30 @@ parser.add_argument(
     help = "Display station names as labels on the plot."
 )
 
+parser.add_argument(
+    "-v",
+    "--verbose",
+    action='store_true',
+    help = "Print verbose logging information about the feed and simulation by setting log level DEBUG."
+)
+
 DIR = Path('')
 sys.path.append(str(DIR))
 DATA_DIR = DIR/'data/gtfs-data'
 
 args = parser.parse_args()
+
+logging.basicConfig(
+    level=logging.DEBUG if args.verbose else logging.INFO,
+    format="%(levelname)s:%(name)s:%(message)s"
+)
+
 if args.url:
     path = args.url
+    logging.debug(f"Using GTFS feed from URL: {path}")
 else:
     path = DATA_DIR/args.file
+    logging.debug(f"Using GTFS feed from file: /data/gtfs-data/{path}")
 
 if args.date:
     simulation_date = args.date
@@ -128,6 +144,7 @@ else:
     new_time_datetime = start_time_datetime + timedelta(hours=1)
     simulation_end_time = new_time_datetime.strftime("%H:%M:%S")
 
+logging.info("Reading GTFS feed...")
 feed = gk.read_feed(path, dist_units='mi')
 validate_args_to_feed(feed, simulation_date)
 moving_feed = feed.append_dist_to_stop_times()
@@ -165,6 +182,7 @@ routes = {}
 for route in route_geo_json_array["features"]: 
     if route["geometry"]["type"] in ["LineString", "MultiLineString"]: # TODO: Could this if statement be removed by doing more filtering in the For loop?
         route_id = route["properties"]["route_id"]
+        logging.debug(f"Processing route {route_id}...")
         if route_id not in route_ids:
             continue
 
@@ -249,6 +267,7 @@ for route in route_geo_json_array["features"]:
         routes[route_id] = {"route_color": route_color, "route_coords": route_coords, "route_stations": route_stations}
 
 # TODO: Make the zoom factor dynamic for the lat / lon so that its something like 10% more than the max-min
+logging.debug("Generating Basemap...")
 zoom_factor = 0.02 # Add padding around station coordinates 
 plt.figure(figsize=(8,8))
 transit_map = Basemap(
@@ -268,6 +287,7 @@ transit_map.fillcontinents(lake_color='white', color=(.9, .9, .9))
 # Plot routes and their stops on map
 target_station_names = args.station_labels if args.station_labels else []
 
+logging.info("Plotting routes and stops on map...")
 for route in routes:
 
     route_color = routes[route]["route_color"]
@@ -313,7 +333,6 @@ for route in routes:
                     fontsize=7
                 )
     elif args.station_labels is not None:
-        print("No station labels specified.")
         for x_stop_proj, y_stop_proj, name in zip(x_stop_proj, y_stop_proj, route_station_names):
             plt.annotate(
                 name,
@@ -324,6 +343,7 @@ for route in routes:
             )
 
 # Get location of trips between specified times
+logging.debug("Filtering trip locations for animation...")
 date_string = ''.join(simulation_date.split('-'))
 start_datetime = simulation_date + ' ' + simulation_start_time
 end_datetime = simulation_date + ' ' + simulation_end_time
@@ -372,6 +392,7 @@ route_colors = {
 
 animated_plots = {}
 
+logging.debug("Initializing animated plot objects for routes...")
 for route_id in route_ids:
     animated_plots[route_id], = transit_map.plot(
         [],
@@ -384,6 +405,7 @@ for route_id in route_ids:
         label=route_id
     )
 
+logging.info("Creating animation...")
 ani = animation.FuncAnimation(
     fig=plt.gcf(),
     func=update_data,
@@ -393,6 +415,7 @@ ani = animation.FuncAnimation(
     repeat_delay=1000
 )
 
+logging.debug("Saving animation as GIF...")
 title_routes = '_'.join(route_ids)
 ani.save(f"output/{title_routes}_{simulation_date}.gif") # Save animation as a gif
 plt.show()
