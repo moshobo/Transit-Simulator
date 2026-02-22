@@ -39,14 +39,14 @@ The following flags can be passed when using the command line:
 ![807_803_801_2024-12-25](https://github.com/user-attachments/assets/f4bc3f24-7256-40ba-b385-4f74ccaab53b)
 
 ## F Train - New York, NY
-Uses some not-yet-committed code to only display select station names.
+Example of a simulation that uses the `--station-label` flag with arguments to display station specific names (ex: `"Jamaica-179 St"`).
 
-`python3 main.py -f example/MTA_gtfs_subway_12222025.zip -d 2025-12-22 -s 09:00:00 -e 09:30:00 -r F -t F Train --station-labels`
+`python3 main.py -f example/MTA_gtfs_subway_12222025.zip -d 2025-12-22 -s 09:00:00 -e 09:30:00 -r F -t F Train --station-labels "Jamaica-179 St" "Coney Island-Stillwell Av"`
 ![F_2025-12-22](https://github.com/user-attachments/assets/bcca709a-1cd0-49b5-ad64-1928ae1ff1e6)
 
 
 ## Sounder - Greater Seattle Area, Washington
-Example of a simulation that uses the `--station-label` flag to display station names.
+Example of a simulation that uses the `--station-label` flag to display all station names.
 
 `python3 main.py -u https://www.soundtransit.org/GTFS-rail/40_gtfs.zip  -d 2025-12-22 -s 06:00:00 -e 10:30:00 -r SNDR_EV SNDR_TL -t Sounder North --station-labels`
 ![SNDR_EV_SNDR_TL_2025-12-22](https://github.com/user-attachments/assets/8f9dd37d-65c6-42f2-9f59-3edca0816b2b)
@@ -61,4 +61,4 @@ Most of the heavy lifting is being done by [gtfs_kit](https://github.com/araiche
 Matplotlib's `FuncAnimation` is then used to animate the vehicles over an array of times
 
 ## Where can I get GTFS data?
-Most transit agencies will make their GTFS data availble for public download, so just try searching for "<city name> GTFS data". As an example, Sound Transit provides GTFS data for most transit agencies in the Seattle area [on their website](https://www.soundtransit.org/help-contacts/business-information/open-transit-data-otd/otd-downloads)
+Most transit agencies will make their GTFS data availble for public download, so just try searching for "<transit agency name> GTFS data". As an example, Sound Transit provides GTFS data for most transit agencies in the Seattle area [on their website](https://www.soundtransit.org/help-contacts/business-information/open-transit-data-otd/otd-downloads)
